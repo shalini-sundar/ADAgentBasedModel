@@ -13,4 +13,10 @@ To use:
 4) Click Go to run the simulation and click Go again to pause or stop the run.
 5) Plots of information provided on the left hand side of the model interface.
 
-For debugging or any further questions, please contact: sshalu@udel.edu, cbatt@udel.edu, rmcnulty@udel.edu or fmorales@udel.edu
+Dependencies: NetLogo 3D (v 6.1)
+
+Authors: 
+Ryan McNulty <rmcnulty@udel.edu>
+Shalini Sundar <sshalu@udel.edu>
+Fernando Morales <fmorales@udel.edu>
+Carly Battistoni <cbatt@udel.edu>
