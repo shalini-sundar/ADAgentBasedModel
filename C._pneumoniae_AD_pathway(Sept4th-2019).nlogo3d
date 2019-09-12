@@ -1,0 +1,1819 @@
+;Created by Carly Battistoni and Ryan McNulty
+;Modified by Fernando Morales
+;Extended (Olfactory Cortex and Hippocampus) by Shalini
+;Last updated September 4th, 2019
+
+;FM:defines turtles with certain set of rules
+breed [EBs EB]
+breed [EB_2s EB_2]
+breed [olfactory-cells olfactory-cell]
+breed [sustentacular-cells sustentacular-cell]
+breed [mitral-cells mitral-cell]
+breed [microglias-olfactory-bulb microglia-olfactory-bulb]
+;added by SS
+breed [olfactory-cortex-neurons olfactory-cortex-neuron]
+;added by SS
+breed [microglias-olfactory-cortex microglia-olfactory-cortex]
+;added by SS
+breed [hippocampus-neurons hippocampus-neuron]
+;added by SS
+breed [microglias-hippocampus microglia-hippocampus]
+breed [tangles-olfactory-cortex tangle-olfactory-cortex]
+breed [tangles-hippocampus tangle-hippocampus]
+
+;FM:method to link turtle
+directed-link-breed [black-links black-link]
+
+;FM:can be used by any turtle in model
+globals [olf-growth-freq sust-growth-freq lyse-rate EB-timer EB-2-timer x-cor y-cor z-cor p c q checkerForTangles makeOneOlfactoryCortexTangle makeOneHippocampusTangle]
+
+;--------------------SETUP FUNCTION-------------------------------------------------------
+to setup ;; for when setup button is selected
+  ;FM: makes all desired shapes appear
+  clear-all
+  set-default-shape olfactory-cells "circle"
+  set-default-shape sustentacular-cells "circle 2"
+  set-default-shape EBs "circle"
+  set-default-shape mitral-cells "circle"
+  set-default-shape microglias-olfactory-bulb "circle 2"
+  set-default-shape EB_2s "circle"
+  ;added by SS
+  set-default-shape olfactory-cortex-neurons "circle"
+  ;added by SS
+  set-default-shape microglias-olfactory-cortex "circle 2"
+  ;added by SS
+  set-default-shape hippocampus-neurons "circle"
+  ;added by SS
+  set-default-shape microglias-hippocampus "circle 2"
+  set-default-shape tangles-olfactory-cortex "x"
+  set-default-shape tangles-hippocampus "x"
+
+  set checkerForTangles false
+  set makeOneOlfactoryCortexTangle false
+  set makeOneHippocampusTangle false
+
+  ;FM: defines how turtle should look when made by procedure below (CPN ELEMENTARY BODIES)
+  create-EBs EB-Concentration [
+    set color yellow
+    set size 0.25
+    randomize-EBs]
+
+  ;FM: defines how turtle should look when made by procedure below (OLFACTORY CELLS)
+  create-olfactory-cells initial-number-olfactory-cells [
+    set color violet
+    set size 1.5
+    randomize-olfactory-cells]
+
+  ;FM: defines how turtle should look when made by procedure below (SUSTENTACULAR CELLS)
+  create-sustentacular-cells initial-number-sustentacular-cells [
+    set color 138 ;; tan
+    set size 1.5
+    randomize-olfactory-cells]
+
+  ;FM: defines how turtle should look when made by procedure below (MITRAL CELLS)
+  create-mitral-cells initial-number-mitral-cells [
+    set color 96 ;; light blue
+    set size 3
+    randomize-mitral-cells]
+
+  ;FM: defines how turtle should look when made by procedure below (MICROGLIA)
+  create-microglias-olfactory-bulb initial-number-microglia-olfactory-bulb[
+    set color 16 ;; light red
+    set size 1.5
+    randomize-microglias-olfactory-bulb]
+
+  ;added by SS
+  create-olfactory-cortex-neurons initial-number-olfactory-cortex-neurons[
+    set color 102 ;;dark blue
+    ;NEEEDDD TO COME BACK TO THIS AND FIX LATER
+    set size 3
+    randomize-olfactory-cortex-neurons]
+
+  ;added by SS
+  create-microglias-olfactory-cortex initial-number-microglia-olfactory-cortex[
+    set color 16 ;; light red
+    set size 1.5
+    randomize-microglias-olfactory-cortex]
+
+  ;added by SS
+  create-hippocampus-neurons initial-number-hippocampus-neurons [
+    set color 122 ;;dark purple
+    set size 3
+    randomize-hippocampus-neurons]
+
+  ;added by SS
+  create-microglias-hippocampus initial-number-microglias-hippocampus[
+    set color 16 ;; light red
+    set size 1.5
+    randomize-microglias-hippocampus]
+
+
+  ;----------------------CREATE BARRIERS------------------------------------------------------------
+  ;FM: creates white barrier shown (MUCUS LAYER - BETWEEN NASAL CAVITY AND OLFACTORY EPITHELIUM)
+  ask patches[
+    if (pxcor = -3)
+    [set pcolor 8]]
+
+  ;FM: creates pink barrier shown (CRIBIFORM LAYER - BETWEEN OLFACTORY EPITHELIUM AND OLFACTORY BULB)
+  ask patches[
+    if ((pxcor > 7) and (pxcor < 11)) ;; in-between tissue & bone layer
+    [set pcolor pink]]
+
+ ;added by SS ("non-real" barrier to distinguish olfactory bulb patches from olfactory cortex)
+ ask patches[
+   if (pxcor = 22)
+   [set pcolor 2]]
+
+  ;added by SS ("non-real barrier to distinguish olfactory cortex from hippocampus)
+  ask patches[
+   if (pxcor = 61)
+   [set pcolor 2]]
+  ;--------------------------------------------------------------------------------------------------
+
+  ;---------------------CONNECT CELLS THAT HAVE SYNAPTIC BEHAVIOR TO EACH OTHER---------------------
+  ;FM: mitral cells receive signals from multiple olfactory receptors for the same molecule
+  ask olfactory-cells [
+    create-black-link-to one-of mitral-cells ]
+
+  ;added by SS: mitral cells output a signal to a cluster of olfactory neurons
+  ask olfactory-cortex-neurons [
+    create-black-link-from one-of mitral-cells]
+
+  ;added by SS: single cortex neuron output to a single hippocampus neuron
+  ask olfactory-cortex-neurons [
+    create-black-link-to one-of hippocampus-neurons]
+  ;-------------------------------------------------------------------------------------------------
+
+  ;FM: how frequently RB filled cell will split... see interface
+  set lyse-rate RB-lyse-freq
+  set EB-timer 5
+  set EB-2-timer EB-life-timer
+  set olf-growth-freq olfactory-cell-growth-frequency
+  set sust-growth-freq sustentacular-cell-growth-frequency
+
+  reset-ticks
+end
+
+;FM: if the C-Pneu.. slider on, then introduce bacteria
+to produce-EBs
+  ifelse C-Pneumoniae-Exposure [
+  if EB-timer = 1
+  [create-EBs EB-concentration [
+  set color yellow
+  set size 0.25
+      randomize-EBs]]]
+  [ask EBs [die]]
+end
+
+;---------------RANDOMIZE FUNCTIONS-------------------------------------------
+;FM: randomly creates EB of bacteria
+to randomize-EBs
+  set xcor -18 + random 14
+  set ycor 10
+  set zcor -9 + random 19
+end
+
+;FM: randomly creates olf cells with condition of not being created on patch
+;FM: loops until not in patch condition
+to randomize-olfactory-cells
+  set xcor -2 + random 10
+  set ycor -9 + random 19
+  set zcor -9 + random 19
+  if abs [pxcor] of patch-here = max-pxcor
+  [randomize-olfactory-cells]
+  if abs [pycor] of patch-here = max-pycor
+  [randomize-olfactory-cells]
+  if abs [pzcor] of patch-here = max-pzcor
+  [randomize-olfactory-cells]
+  if any? other olfactory-cells-here
+  [randomize-olfactory-cells]
+end
+
+;FM: randomly creates mitral cells with condition of not being created on patch
+to randomize-mitral-cells
+  set xcor 17
+  set ycor -9 + random 19
+  set zcor -9 + random 19
+  if abs [pxcor] of patch-here = 20
+  [randomize-mitral-cells]
+  if abs [pycor] of patch-here = max-pycor
+  [randomize-mitral-cells]
+  if abs [pzcor] of patch-here = max-pzcor
+  [randomize-mitral-cells]
+  if any? other mitral-cells-here
+  [randomize-mitral-cells]
+end
+
+;FM: randomly creates microglia cells with condition of not being created on patch
+;FM: loops until not in patch condition (OLFACTORY BULB)
+to randomize-microglias-olfactory-bulb
+  set xcor 11 + abs random 8
+  set ycor -9 + random 19
+  set zcor -9 + random 19
+  if abs [pxcor] of patch-here = 20
+  [randomize-microglias-olfactory-bulb]
+  if abs [pycor] of patch-here = max-pycor
+  [randomize-microglias-olfactory-bulb]
+  if abs [pzcor] of patch-here = max-pzcor
+  [randomize-microglias-olfactory-bulb]
+  if any? other microglias-olfactory-bulb-here
+  [randomize-microglias-olfactory-bulb]
+end
+
+;added by SS: randomly creates pyramidal olfactory cortex neurons with condition of not being created on patch
+to randomize-olfactory-cortex-neurons
+  ;olfactory cortex spans from x-coordinates 21 to 61. let neurons be positioned in center +/- 5
+  set xcor 36 + random 10
+  set ycor -9 + random 19
+  set zcor -9 + random 19
+  if abs [pxcor] of patch-here = max-pxcor
+  [randomize-olfactory-cortex-neurons]
+  if abs [pycor] of patch-here = max-pycor
+  [randomize-olfactory-cortex-neurons]
+  if abs [pzcor] of patch-here = max-pzcor
+  [randomize-olfactory-cortex-neurons]
+  if any? other olfactory-cortex-neurons-here
+  [randomize-olfactory-cortex-neurons]
+end
+
+;added by SS: randomly creates microglia cells with condition of not being created on patch
+;SS: loops until not in patch condition (IN OLFACTORY CORTEX)
+to randomize-microglias-olfactory-cortex
+  ;olfactory cortex spans from x-coordinates 21 to 61. let neurons be positioned in center +/- 10
+  set xcor 31 + random 20
+  set ycor -9 + random 19
+  set zcor -9 + random 19
+  if abs [pxcor] of patch-here = 60
+  [randomize-microglias-olfactory-bulb]
+  if abs [pycor] of patch-here = max-pycor
+  [randomize-microglias-olfactory-bulb]
+  if abs [pzcor] of patch-here = max-pzcor
+  [randomize-microglias-olfactory-bulb]
+  if any? other microglias-olfactory-cortex-here
+  [randomize-microglias-olfactory-bulb]
+end
+
+;added by SS: randomly creates hippocampus neurons with condition of not being created on patch
+to randomize-hippocampus-neurons
+  ;hippocampus spans from x-coordinates 61 to 100. let neurons be positioned in center +/- 5
+  set xcor 76 + random 10
+  set ycor -9 + random 19
+  set zcor -9 + random 19
+  if abs [pxcor] of patch-here = max-pxcor
+  [randomize-hippocampus-neurons]
+  if abs [pycor] of patch-here = max-pycor
+  [randomize-hippocampus-neurons]
+  if abs [pzcor] of patch-here = max-pzcor
+  [randomize-hippocampus-neurons]
+  if any? other hippocampus-neurons-here
+  [randomize-hippocampus-neurons]
+end
+
+;added by SS: randomly creates microglia cells with condition of not being created on patch
+;SS: loops until not in patch condition (IN HIPPOCAMPUS)
+to randomize-microglias-hippocampus
+  ;hippocampus spans from x-coordinates 61 to 100. let neurons be positioned in center +/- 10
+  set xcor 71 + random 20
+  set ycor -9 + random 19
+  set zcor -9 + random 19
+  if abs [pxcor] of patch-here = 99
+  [randomize-microglias-hippocampus]
+  if abs [pycor] of patch-here = max-pycor
+  [randomize-microglias-hippocampus]
+  if abs [pzcor] of patch-here = max-pzcor
+  [randomize-microglias-hippocampus]
+  if any? other microglias-hippocampus-here
+  [randomize-microglias-hippocampus]
+end
+
+;------------------------GO FUNCTION----------------------------------------------
+;FM: all procedure initiated on go
+to go
+  produce-EBs
+  decrease-timers
+  infection-1
+  infection-2
+  infection-3
+  infection-4
+  EB-death-1
+  EB-death-2
+  EB-death-3
+  EB-death-4
+  propagate-infection
+  move-turtles
+  swarm
+  accumulate-plaque
+  hard-boundaries
+  if olf-growth-freq-expired? [reproduce_olf]
+  if sust-growth-freq-expired? [reproduce_sust]
+  if lyse-rate-expired? [salvation olfactory-death sustentacular-death]
+  last-check
+  reset-timers
+  tick
+end
+;--------------------------------------------------------------------------------
+
+;-----------------OLFACTORY EPITHELIUM FUNCTIONS----------------------------------
+;FM: try to keep number of olf/sust cells equal to initial
+to reproduce_olf
+  if count olfactory-cells < initial-number-olfactory-cells [
+    create-olfactory-cells 1 [
+      set color violet
+      set size 1.5
+      randomize-olfactory-cells
+      create-black-link-to one-of mitral-cells]]
+end
+
+to reproduce_sust
+  if count sustentacular-cells < initial-number-sustentacular-cells [
+    create-sustentacular-cells 1 [
+      set color 138
+      set size 1.5
+      randomize-olfactory-cells]]
+end
+
+;FM: 'die' action kills infected olf cell... releases created EB_2s
+to olfactory-death
+  if any? olfactory-cells with [color = green]
+  [ask one-of olfactory-cells with [color = green] [
+  set x-cor xcor
+  set y-cor ycor
+  set z-cor zcor
+    die]
+  create-EB_2s RB-replication-number [ ;EB turns into RB which divides into x EBs
+  set color yellow
+  set size 0.25
+  setxyz x-cor y-cor z-cor]]
+end
+
+;FM: 'die' action kills infected sust cell... RB replication with sust cells
+to sustentacular-death
+    if any? sustentacular-cells with [color = green]
+  [;set c count sustentacular-cells with [color = green]
+  ;set q round c * 0.80 ;;to be explored
+  ask one-of sustentacular-cells with [color = green] [
+  set x-cor xcor
+  set y-cor ycor
+  set z-cor zcor
+      die]
+  create-EB_2s RB-replication-number [ ;EB turns into RB which divides into x EBs
+  set color yellow
+  set size 0.25
+      setxyz x-cor y-cor z-cor]]
+end
+;----------------------------------------------------------------------------------
+
+;---------------------CELL MOVEMENT FUNCTIONS--------------------------------------
+;FM: models movement of turtles... assuming this is similar to other NetLogo models
+to move-turtles ;; the WIGGLE-ANGLE slider makes cell path straight or "wiggly"
+  ask EBs [
+    set heading 180 + random 120 - random 120
+    tilt-down random 10
+    tilt-up random 10
+    bounce-EBs
+    reorient
+    if bacteria-tails
+    [pen-down]
+    ifelse [pxcor] of patch-here = -3 [forward 0.1][forward 1]]
+
+  ask EB_2s [
+    roll-right random-float cell-wiggle-angle - random-float cell-wiggle-angle
+    rt random-float cell-wiggle-angle - random-float cell-wiggle-angle
+    tilt-up random-float cell-wiggle-angle - random-float cell-wiggle-angle
+    bounce-EB_2s
+    reorient
+    ifelse [pxcor] of patch-here = -3 [forward 0.1][forward 1]]
+
+  ask olfactory-cells [
+    roll-right random-float cell-wiggle-angle - random-float cell-wiggle-angle
+    rt random-float cell-wiggle-angle - random-float cell-wiggle-angle
+    tilt-up random-float cell-wiggle-angle - random-float cell-wiggle-angle
+    bounce-olfactory-cells
+    reorient
+    if olfactory-cell-tails
+    [pen-down]
+    forward .25]
+
+  ask sustentacular-cells [
+    roll-right random-float cell-wiggle-angle - random-float cell-wiggle-angle
+    rt random-float cell-wiggle-angle - random-float cell-wiggle-angle
+    tilt-up random-float cell-wiggle-angle - random-float cell-wiggle-angle
+    bounce-olfactory-cells
+    reorient
+    forward .25]
+
+  ask mitral-cells [
+    roll-right random-float cell-wiggle-angle - random-float cell-wiggle-angle
+    rt random-float cell-wiggle-angle - random-float cell-wiggle-angle
+    tilt-up random-float cell-wiggle-angle - random-float cell-wiggle-angle
+    bounce-mitral-cells
+    reorient
+    forward .1]
+
+  ask microglias-olfactory-bulb [
+    roll-right random-float microglia-wiggle-angle - random-float microglia-wiggle-angle
+    rt random-float microglia-wiggle-angle - random-float microglia-wiggle-angle
+    tilt-up random-float microglia-wiggle-angle - random-float microglia-wiggle-angle
+    bounce-microglias-olfactory-bulb
+    reorient
+    forward 0.5]
+
+ ;added by SS: neurons will act much like mitral cells so similar function
+ ask olfactory-cortex-neurons [
+    roll-right random-float cell-wiggle-angle - random-float cell-wiggle-angle
+    rt random-float cell-wiggle-angle - random-float cell-wiggle-angle
+    tilt-up random-float cell-wiggle-angle - random-float cell-wiggle-angle
+    bounce-olfactory-cortex-neurons
+    reorient
+    forward .1]
+
+  ;added by SS: microglias in the olfactory cortex will act like those in the olfactory bulb
+  ask microglias-olfactory-cortex [
+    roll-right random-float microglia-wiggle-angle - random-float microglia-wiggle-angle
+    rt random-float microglia-wiggle-angle - random-float microglia-wiggle-angle
+    tilt-up random-float microglia-wiggle-angle - random-float microglia-wiggle-angle
+    bounce-microglias-olfactory-cortex
+    reorient
+    forward 0.5]
+
+ ;added by SS: neurons will act much like mitral cells so similar function
+ ask hippocampus-neurons [
+    roll-right random-float cell-wiggle-angle - random-float cell-wiggle-angle
+    rt random-float cell-wiggle-angle - random-float cell-wiggle-angle
+    tilt-up random-float cell-wiggle-angle - random-float cell-wiggle-angle
+    bounce-hippocampus-neurons
+    reorient
+    forward .1]
+
+  ;added by SS: microglias in the hippocampus will act like those in the olfactory cortex
+  ask microglias-hippocampus [
+    roll-right random-float microglia-wiggle-angle - random-float microglia-wiggle-angle
+    rt random-float microglia-wiggle-angle - random-float microglia-wiggle-angle
+    tilt-up random-float microglia-wiggle-angle - random-float microglia-wiggle-angle
+    bounce-microglias-hippocampus
+    reorient
+    forward 0.5]
+
+ end
+
+;FM: models movement of turtles... assuming this is similar to other NetLogo models
+to reorient
+  ask olfactory-cells [if ([pxcor] of patch-here < -2) or ([pxcor] of patch-here > 6) [facexyz 2 -10 + random 20 -10 + random 20]]
+  ask sustentacular-cells [if ([pxcor] of patch-here < -1) or ([pxcor] of patch-here > 6) [facexyz 2 -10 + random 20 -10 + random 20]]
+
+  ask mitral-cells [if ([pxcor] of patch-here < 12) or ([pxcor] of patch-here > 18) [facexyz 15 0 0]]
+  ask mitral-cells [if (abs [pzcor] of patch-here > 7) [facexyz 17 0 0]]
+  ask mitral-cells [if (abs [pycor] of patch-here > 7) [facexyz 17 0 0]]
+  ask microglias-olfactory-bulb [if ([pxcor] of patch-here < 11) or ([pxcor] of patch-here  > 21) [facexyz 15 0 0]]
+
+  ;added by SS: similar as for mitral cells excpt for different placement of neurons
+  ask olfactory-cortex-neurons [if ([pxcor] of patch-here < 25) or ([pxcor] of patch-here > 55) [facexyz 41 0 0]]
+  ask olfactory-cortex-neurons [if (abs [pzcor] of patch-here > 7) [facexyz 41 0 0]]
+  ask olfactory-cortex-neurons [if (abs [pycor] of patch-here > 7) [facexyz 41 0 0]]
+  ;added by SS: similar as for microglia except for different placement of microglia
+  ;if the microglia goes within 1 of the patch barriers
+  ask microglias-olfactory-bulb [if ([pxcor] of patch-here < 22) or ([pxcor] of patch-here > 60) [facexyz 41 0 0]]
+
+  ;added by SS: similar as for mitral cells excpt for different placement of neurons
+  ask hippocampus-neurons [if ([pxcor] of patch-here < 65) or ([pxcor] of patch-here > 95) [facexyz 81 0 0]]
+  ask hippocampus-neurons [if (abs [pzcor] of patch-here > 7) [facexyz 81 0 0]]
+  ask olfactory-cortex-neurons [if (abs [pycor] of patch-here > 7) [facexyz 81 0 0]]
+  ;added by SS: similar as for microglia except for different placement of microglia
+  ;if the microglia goes within 1 of the patch barriers
+  ask microglias-hippocampus [if ([pxcor] of patch-here < 62) or ([pxcor] of patch-here > 99) [facexyz 81 0 0]]
+end
+
+;FM: does not allow the cells to exist at the patch locations - cells that do not matter for connections die (not mitral or neuron cells)
+to hard-boundaries
+  ask olfactory-cells [if ([pxcor] of patch-here = -4) or ([pxcor] of patch-here = 11) [die]]
+  ask sustentacular-cells [if ([pxcor] of patch-here = -4) or ([pxcor] of patch-here = 11) [die]]
+  ask EB_2s [if ([pxcor] of patch-here = -4) or ([pxcor] of patch-here = 8) [die]]
+
+  ask microglias-olfactory-bulb [
+    if [pxcor] of patch-here > 21 [die]
+    if [pxcor] of patch-here < 11 [die]]
+
+  ask microglias-olfactory-cortex [
+    if [pxcor] of patch-here > 61 [die]
+    if [pxcor] of patch-here < 21 [die]]
+
+  ask microglias-hippocampus [
+    if [pxcor] of patch-here > 100 [die]
+    if [pxcor] of patch-here < 61 [die]]
+
+end
+;------------------------------------------------------------------------------------------
+
+;-----------------------BOUNCE FUNCTIONS---------------------------------------------------
+;SS: functions allow for moving cells if they come into contact with a patch/are outside their boundaries
+;FM: models movement of turtles... assuming this is similar to other NetLogo models
+to bounce-EBs
+  if [pxcor] of patch-ahead 1 = min-pxcor
+  [set heading (- heading) set roll (- roll) set pitch (- pitch) ]
+  if abs [pzcor] of patch-ahead 1 = max-pzcor
+  [set heading (- heading) set roll (- roll) set pitch (- pitch) ]
+  if [pxcor] of patch-ahead 1 = -2
+  [set heading ( - heading) ]
+end
+
+;FM: models movement of turtles... assuming this is similar to other NetLogo models
+to bounce-EB_2s
+  if [pxcor] of patch-ahead 1 = -3
+  [set heading (- heading) set roll (- roll) set pitch (- pitch) ]
+  if abs [pzcor] of patch-ahead 1 = max-pzcor
+  [set heading (- heading) set roll (- roll) set pitch (- pitch) ]
+  if [pxcor] of patch-ahead 1 = 8
+  [set heading ( - heading) ]
+  if (abs [pycor] of patch-ahead 1 = max-pycor)
+  [set heading (180 - heading) ]
+end
+
+;FM: models movement of turtles... assuming this is similar to other NetLogo models
+to bounce-olfactory-cells
+  if (abs [pycor] of patch-ahead .50 = max-pycor)
+  [set heading (180 - heading) ]
+  if [pxcor] of patch-ahead .50 = 8
+  [set heading ( - heading) ]
+  if [pxcor] of patch-ahead .50 = -3
+  [set heading ( - heading) ]
+  if (abs [pzcor] of patch-ahead .50 = max-pzcor)
+  [set heading (- heading) set roll (- roll) set pitch (- pitch)]
+end
+
+;FM: models movement of turtles... assuming this is similar to other NetLogo models
+to bounce-mitral-cells
+  if [pxcor] of patch-ahead 1 = max-pxcor
+  [set heading ( - heading) ]
+  if [pxcor] of patch-ahead 1 = 15
+  [set heading ( - heading) ]
+  if (abs [pycor] of patch-ahead 1 = max-pycor)
+  [set heading ( - heading) ]
+  if (abs [pzcor] of patch-ahead 1 = max-pzcor)
+  [set heading (- heading) set roll (- roll) set pitch (- pitch)]
+end
+
+;FM: models movement of turtles... assuming this is similar to other NetLogo models
+to bounce-microglias-olfactory-bulb
+  if (abs [pycor] of patch-ahead .50 = max-pycor)
+  [set heading (180 - heading) ]
+  if [pxcor] of patch-ahead .50 = 10
+  [set heading ( - heading) ]
+  if [pxcor] of patch-ahead .50 = 20
+  [set heading ( - heading) ]
+  if (abs [pzcor] of patch-ahead .50 = max-pzcor)
+  [set heading (- heading) set roll (- roll) set pitch (- pitch)]
+end
+
+;added by SS: same function as mitral cells with slight modifications
+to bounce-olfactory-cortex-neurons
+  if [pxcor] of patch-ahead 1 = max-pxcor
+  [set heading ( - heading) ]
+  if [pxcor] of patch-ahead 1 = 41
+  [set heading ( - heading) ]
+  if (abs [pycor] of patch-ahead 1 = max-pycor)
+  [set heading ( - heading) ]
+  if (abs [pzcor] of patch-ahead 1 = max-pzcor)
+  [set heading (- heading) set roll (- roll) set pitch (- pitch)]
+end
+
+;added by SS: similar function as microglia-olf.-bulb with slight modifications
+to bounce-microglias-olfactory-cortex
+  if (abs [pycor] of patch-ahead .50 = max-pycor)
+  [set heading (180 - heading) ]
+  if [pxcor] of patch-ahead .50 = 22
+  [set heading ( - heading) ]
+  if [pxcor] of patch-ahead .50 = 60
+  [set heading ( - heading) ]
+  if (abs [pzcor] of patch-ahead .50 = max-pzcor)
+  [set heading (- heading) set roll (- roll) set pitch (- pitch)]
+end
+
+;added by SS: same function as mitral cells with slight modifications
+to bounce-hippocampus-neurons
+  if [pxcor] of patch-ahead 1 = max-pxcor
+  [set heading ( - heading) ]
+  if [pxcor] of patch-ahead 1 = 81
+  [set heading ( - heading) ]
+  if (abs [pycor] of patch-ahead 1 = max-pycor)
+  [set heading ( - heading) ]
+  if (abs [pzcor] of patch-ahead 1 = max-pzcor)
+  [set heading (- heading) set roll (- roll) set pitch (- pitch)]
+end
+
+;added by SS: similar function as microglia-olf.-bulb with slight modifications
+to bounce-microglias-hippocampus
+  if (abs [pycor] of patch-ahead .50 = max-pycor)
+  [set heading (180 - heading) ]
+  if [pxcor] of patch-ahead .50 = 62
+  [set heading ( - heading) ]
+  if [pxcor] of patch-ahead .50 = 99
+  [set heading ( - heading) ]
+  if (abs [pzcor] of patch-ahead .50 = max-pzcor)
+  [set heading (- heading) set roll (- roll) set pitch (- pitch)]
+end
+;--------------------------------------------------------------------------------------
+
+;------------------------------INFECTION FUNCTIONS-------------------------------------------
+;FM: distance changes with slider from interface
+;FM: infects olf cell when distance achieved
+;FM: below procedues
+to infection-1
+  ask EBs
+  [ask olfactory-cells with [color = violet]
+    [let d DISTANCE myself
+    if (d < chance-of-infection)
+      [ set color [green] of myself] ] ]
+end
+
+;FM: infects sustentacular cell when distance achieved
+to infection-2
+  ask EBs
+  [ask sustentacular-cells with [color = 138]
+    [let d DISTANCE myself
+    if (d < chance-of-infection)
+      [ set color [green] of myself] ] ]
+end
+
+;FM: infects olf cell when distance achieved
+to infection-3
+  ask EB_2s
+  [ask olfactory-cells with [color = violet]
+    [let d DISTANCE myself
+    if (d < chance-of-infection)
+      [ set color [green] of myself] ] ]
+end
+
+;FM: infects sustentacular cell when distance achieved
+to infection-4
+  ask EB_2s
+  [ask sustentacular-cells with [color = 138]
+    [let d DISTANCE myself
+    if (d < chance-of-infection)
+      [ set color [green] of myself] ] ]
+end
+
+;FM: kills of EB once infects olf cell
+to EB-death-1
+  ask olfactory-cells with [color = green]
+  [ask other EBs
+  [let x DISTANCE myself
+    if x < chance-of-infection
+      [die] ] ]
+  ask EBs [
+    if pycor < -9 [die]]
+end
+
+;FM: kills of EB once infects sustentacular cell
+to EB-death-2
+  ask sustentacular-cells with [color = green]
+  [ask other EBs
+  [let x DISTANCE myself
+    if x < chance-of-infection
+      [die] ] ]
+  ask EBs [
+    if pycor < -9 [die]]
+end
+
+;FM: kills of EB once infects olf cell
+to EB-death-3
+  ask olfactory-cells with [color = green]
+  [ask other EB_2s
+  [let x DISTANCE myself
+    if x < chance-of-infection
+      [die] ] ]
+  ifelse (EB-2-timer = 1) and (count EB_2s > (RB-replication-number * 0.5)) [
+    ask n-of (RB-replication-number * 0.5) EB_2s [die]] [ask n-of (count EB_2s * 0.5) EB_2s [die]]
+end
+
+;FM: kills of EB once infects sustentacular cell
+to EB-death-4
+  ask sustentacular-cells with [color = green]
+  [ask other EB_2s
+  [let x DISTANCE myself
+    if x < chance-of-infection
+      [die] ] ]
+  ifelse (EB-2-timer = 1) and (count EB_2s > (RB-replication-number * 0.5)) [
+    ask n-of (RB-replication-number * 0.5) EB_2s [die]] [ask n-of (count EB_2s * 0.5) EB_2s [die]]
+end
+
+;FM: spread infection to black-link ONLY... infected connection
+to propagate-infection
+  ask black-links [if any? both-ends with [color = green] [set color green]]
+end
+;------------------------------------------------------------------------------------------------------
+
+;FM: go to heal infected mitral
+to swarm
+  ;FM: infects the mitral-cells
+  ask mitral-cells [if (all? my-in-links [color = green]) and (count my-in-links > 0) [set color green]]
+  ;added by SS: similar idea to the mitral cells (in links from mitral cells): if mitral cells are infected, infect olfactory cortex cluster
+  ask olfactory-cortex-neurons [if (all? my-in-links [color = green]) and (count my-in-links > 0) [set color green]]
+  ;added by SS: similar idea to the mitral cells (in links from olfactory cortex cells): if olfactory cortex cells are infected, infect connected hippocampus neuron
+  ask hippocampus-neurons [if (all? my-in-links [color = green]) and (count my-in-links > 0) [set color green]]
+
+  ask mitral-cells with [color = green]
+    [let x xcor + random 5 - random 5
+    let y ycor + random 5 - random 5
+    let z zcor  + random 5 - random 5
+      ;FM: attacks infected cell defined above ^
+      ask one-of microglias-olfactory-bulb [
+        facexyz x y z
+        forward 1]]
+
+  ;added by SS: similar idea to the mitral cells function above
+  ask olfactory-cortex-neurons with [color = green]
+    [let x xcor + random 5 - random 5
+    let y ycor + random 5 - random 5
+    let z zcor  + random 5 - random 5
+      ;FM: attacks infected cell defined above ^
+      ask one-of microglias-olfactory-cortex [
+        facexyz x y z
+        forward 3]]
+
+  ;added by SS: similar idea to the mitral cells function above
+  ask hippocampus-neurons with [color = green]
+    [let x xcor + random 5 - random 5
+    let y ycor + random 5 - random 5
+    let z zcor  + random 5 - random 5
+      ;FM: attacks infected cell defined above ^
+      ask one-of microglias-hippocampus [
+        facexyz x y z
+        forward 3]]
+end
+
+;FM: from slider heal chance, distance is variable for how easy it's healed
+to accumulate-plaque
+  ;added by SS
+  ask mitral-cells with [color = green]
+  [ask other microglias-olfactory-bulb
+  [let x DISTANCE myself
+      ;FM: below shows... if healed:create 9.1 patch
+    if x < Microglia-heal-chance
+        [set color 96
+         ask my-in-links [die]]]]
+
+  ;added by SS
+  ask olfactory-cortex-neurons with [color = green]
+  [ask other microglias-olfactory-cortex
+  [let x DISTANCE myself
+      ;FM: below shows... if healed:create 9.1 patch
+    if x < Microglia-heal-chance
+      [set pcolor 9.1
+        ask olfactory-cortex-neurons with [color = green] [
+        if any? neighbors with [pcolor = 9.1]
+        [set color 102
+         ask my-in-links [die]]]
+        set makeOneOlfactoryCortexTangle true]]]
+
+  ;make 1 tangle for each amyoid made, after hippocampus amyloid plaque accumulation has begun
+  if checkerForTangles = true and makeOneOlfactoryCortexTangle  = true[
+    create-tangles-olfactory-cortex 1
+    [set color orange
+     set size 2
+     randomize-tangles-olfactory-cortex
+     set makeOneOlfactoryCortexTangle false]]
+
+  ;added by SS
+  ask hippocampus-neurons with [color = green]
+  [ask other microglias-hippocampus
+  [let x DISTANCE myself
+      ;FM: below shows... if healed:create 9 patch
+    if x < Microglia-heal-chance
+      [set pcolor 9
+       set checkerForTangles true
+        ask hippocampus-neurons with [color = green] [
+        if any? neighbors with [pcolor = 9]
+        [set color 122
+         ask my-in-links [die]]
+         set makeOneHippocampusTangle true]]]]
+
+  ;make 1 tangle for each amyoid made, after hippocampus amyloid plaque accumulation has begun
+  if checkerForTangles = true and makeOneHippocampusTangle  = true[
+    create-tangles-hippocampus 1
+    [set color orange
+     set size 2
+     randomize-tangles-hippocampus
+     set makeOneHippocampusTangle false]]
+end
+
+to randomize-tangles-olfactory-cortex
+  set xcor 36 + random 10
+  set ycor -9 + random 19
+  set zcor -9 + random 19
+  if abs [pxcor] of patch-here = max-pxcor
+  [randomize-tangles-olfactory-cortex]
+  if abs [pycor] of patch-here = max-pycor
+  [randomize-tangles-olfactory-cortex]
+  if abs [pzcor] of patch-here = max-pzcor
+  [randomize-tangles-olfactory-cortex]
+  if [pcolor] of patch-here = 9.1
+  [randomize-tangles-olfactory-cortex]
+  if any? other olfactory-cortex-neurons-here
+  [randomize-tangles-olfactory-cortex]
+end
+
+to randomize-tangles-hippocampus
+  set xcor 76 + random 10
+  set ycor -9 + random 19
+  set zcor -9 + random 19
+  if abs [pxcor] of patch-here = max-pxcor
+  [randomize-tangles-hippocampus]
+  if abs [pycor] of patch-here = max-pycor
+  [randomize-tangles-hippocampus]
+  if abs [pzcor] of patch-here = max-pzcor
+  [randomize-tangles-hippocampus]
+  if [pcolor] of patch-here = 9
+  [randomize-tangles-hippocampus]
+  if any? other hippocampus-neurons-here
+  [randomize-tangles-hippocampus]
+end
+
+to salvation
+  set c count olfactory-cells with [color = green]
+  set p olfactory-recovery-ability * c
+if random RB-lyse-freq < RB-lyse-freq * olfactory-recovery-ability
+  [if any? olfactory-cells with [color = green]
+    [ask n-of p olfactory-cells with [color = green]
+      [set color violet
+       ask my-out-links [
+          set color 9.1 ]]]]
+    set c count sustentacular-cells with [color = green]
+  set p olfactory-recovery-ability * c
+if random RB-lyse-freq < RB-lyse-freq * olfactory-recovery-ability
+  [if any? sustentacular-cells with [color = green]
+    [ask n-of p sustentacular-cells with [color = green]
+      [set color 138]]]
+end
+
+;----------------------------TIMER FUNCTIONS-------------------------------
+to decrease-timers
+  set olf-growth-freq olf-growth-freq - 1
+  set sust-growth-freq sust-growth-freq - 1
+  set lyse-rate lyse-rate - 1
+  set EB-timer EB-timer - 1
+  set EB-2-timer EB-2-timer - 1
+end
+
+to-report olf-growth-freq-expired?
+  report (olf-growth-freq = 0)
+end
+
+to-report sust-growth-freq-expired?
+  report (sust-growth-freq = 0)
+end
+
+to-report lyse-rate-expired?
+  report (lyse-rate = 0)
+end
+
+to-report EB-2-timer-expired?
+  report (EB-2-timer = 0)
+end
+
+to reset-timers
+  if olf-growth-freq = 0 [
+      set olf-growth-freq olfactory-cell-growth-frequency]
+  if sust-growth-freq = 0 [
+      set sust-growth-freq sustentacular-cell-growth-frequency]
+  if lyse-rate = 0 [
+    set lyse-rate RB-lyse-freq]
+  if EB-timer = 0 [
+    set EB-timer 5]
+  if EB-2-timer = 0 [
+    set EB-2-timer EB-life-timer]
+end
+
+;FM: used to ensure no useless olf cells and keep microglia # up
+to last-check
+  ask olfactory-cells [
+    if count my-out-links = 0
+    [die]]
+
+    if count microglias-olfactory-bulb < initial-number-microglia-olfactory-bulb [
+      create-microglias-olfactory-bulb 1 [
+      set color 16
+        set size 1.5
+          randomize-microglias-olfactory-bulb ]]
+
+   ;added by SS: much like the function above
+   if count microglias-olfactory-cortex < initial-number-microglia-olfactory-cortex [
+      create-microglias-olfactory-cortex 1 [
+      set color 16
+        set size 1.5
+          randomize-microglias-olfactory-cortex ]]
+
+  ;added by SS: much like the function above
+   if count microglias-hippocampus < initial-number-microglias-hippocampus [
+      create-microglias-hippocampus 1 [
+      set color 16
+        set size 1.5
+          randomize-microglias-hippocampus ]]
+end
+;------------------------------------------------------------------------
+@#$#@#$#@
+GRAPHICS-WINDOW
+0
+0
+2528
+429
+-1
+-1
+20.0
+1
+10
+1
+1
+1
+0
+1
+1
+1
+-25
+100
+-10
+10
+-15
+15
+1
+1
+1
+ticks
+30.0
+
+BUTTON
+15
+19
+81
+52
+NIL
+setup
+NIL
+1
+T
+OBSERVER
+NIL
+NIL
+NIL
+NIL
+1
+
+BUTTON
+16
+60
+79
+93
+NIL
+go
+T
+1
+T
+OBSERVER
+NIL
+NIL
+NIL
+NIL
+0
+
+SLIDER
+285
+245
+552
+278
+initial-number-sustentacular-cells
+initial-number-sustentacular-cells
+0
+300
+50.0
+1
+1
+NIL
+HORIZONTAL
+
+SLIDER
+285
+205
+524
+238
+initial-number-olfactory-cells
+initial-number-olfactory-cells
+0
+150
+50.0
+1
+1
+NIL
+HORIZONTAL
+
+SLIDER
+285
+165
+457
+198
+EB-Concentration
+EB-Concentration
+0
+200
+100.0
+1
+1
+NIL
+HORIZONTAL
+
+SLIDER
+285
+325
+504
+358
+initial-number-mitral-cells
+initial-number-mitral-cells
+0
+20
+15.0
+1
+1
+NIL
+HORIZONTAL
+
+SLIDER
+610
+285
+782
+318
+cell-wiggle-angle
+cell-wiggle-angle
+0
+360
+360.0
+1
+1
+NIL
+HORIZONTAL
+
+SWITCH
+15
+165
+189
+198
+Olfactory-cell-tails
+Olfactory-cell-tails
+1
+1
+-1000
+
+SWITCH
+15
+205
+154
+238
+bacteria-tails
+bacteria-tails
+1
+1
+-1000
+
+SLIDER
+285
+285
+532
+318
+initial-number-microglia-olfactory-bulb
+initial-number-microglia-olfactory-bulb
+0
+40
+15.0
+1
+1
+NIL
+HORIZONTAL
+
+SLIDER
+610
+325
+807
+358
+microglia-wiggle-angle
+microglia-wiggle-angle
+0
+180
+180.0
+1
+1
+NIL
+HORIZONTAL
+
+PLOT
+1490
+20
+1790
+225
+Olfactory Cell Health
+Ticks (Time)
+# of olfactory cells
+0.0
+10.0
+0.0
+10.0
+true
+true
+"" ""
+PENS
+"Infected" 1.0 0 -13840069 true "" "plot count olfactory-cells with [color = green]"
+"Healthy" 1.0 0 -10141563 true "" "plot count olfactory-cells with [color = violet]"
+
+SWITCH
+15
+245
+228
+278
+C-Pneumoniae-Exposure
+C-Pneumoniae-Exposure
+0
+1
+-1000
+
+MONITOR
+1075
+725
+1352
+770
+Total Plaque Formed (Olfactory Cortex)
+count patches with [pcolor = 9.1]
+2
+1
+11
+
+SLIDER
+610
+365
+876
+398
+olfactory-cell-growth-frequency
+olfactory-cell-growth-frequency
+1
+1000
+30.0
+1
+1
+NIL
+HORIZONTAL
+
+SLIDER
+610
+525
+782
+558
+RB-lyse-freq
+RB-lyse-freq
+10
+1000
+300.0
+10
+1
+NIL
+HORIZONTAL
+
+SLIDER
+610
+245
+798
+278
+Microglia-heal-chance
+Microglia-heal-chance
+0
+0.5
+0.2
+0.1
+1
+NIL
+HORIZONTAL
+
+SLIDER
+610
+205
+788
+238
+chance-of-infection
+chance-of-infection
+0
+3
+1.0
+0.1
+1
+NIL
+HORIZONTAL
+
+TEXTBOX
+95
+15
+399
+111
+Recommended Values (1/2)\nOlfactory-cell-growth-frequency:\n3000 / initial # olfactory cells ; doubling time = 30 days\nSustentacular-cell-growth-frequency: Same as above\nRB-lyse-freq: 300 ticks = 3 days\nChance-of-Infection: 1.0\nMicroglia-heal-chance: 0.2
+11
+0.0
+0
+
+SLIDER
+610
+165
+819
+198
+olfactory-recovery-ability
+olfactory-recovery-ability
+0
+1
+0.7
+0.1
+1
+NIL
+HORIZONTAL
+
+TEXTBOX
+420
+10
+676
+100
+Recommended Values (2/2)\nCell-wiggle-angle: 360\nMicroglia-wiggle-angle: 180\nOlfactory-recovery-ability: 0.1-0.7\nRB-replication-number: 20\nEB-timer-global: 5
+11
+0.0
+1
+
+SLIDER
+610
+445
+806
+478
+RB-replication-number
+RB-replication-number
+0
+50
+20.0
+1
+1
+NIL
+HORIZONTAL
+
+PLOT
+910
+390
+1350
+715
+Plaque and Tangle Formation (Olfactory Cortex)
+Ticks (100 ticks = 1 day)
+# of patches
+0.0
+10.0
+0.0
+10.0
+true
+true
+"" ""
+PENS
+"Plaque" 1.0 0 -16777216 true "" "plot count patches with [pcolor = 9.1]"
+"Tangles" 1.0 0 -2674135 true "" "plot count tangles-olfactory-cortex"
+
+PLOT
+910
+20
+1480
+375
+Infected Cell Counts
+Ticks (Time)
+# of cells
+0.0
+10.0
+0.0
+10.0
+true
+true
+"" ""
+PENS
+"Olfactory" 1.0 0 -10141563 true "" "plot count olfactory-cells with [color = green]"
+"Sustentacular" 1.0 0 -2674135 true "" "plot count sustentacular-cells with [color = green]"
+"Mitral Cells" 1.0 0 -13791810 true "" "plot count mitral-cells with [color = green]"
+"O. Cortex Neurons" 1.0 0 -15390905 true "" "plot count olfactory-cortex-neurons with [color = green]"
+"Hippo. Neurons" 1.0 0 -955883 true "" "plot count hippocampus-neurons with [color = green]"
+
+SLIDER
+285
+365
+552
+398
+initial-number-olfactory-cortex-neurons
+initial-number-olfactory-cortex-neurons
+0
+50
+30.0
+1
+1
+NIL
+HORIZONTAL
+
+SLIDER
+610
+405
+867
+438
+sustentacular-cell-growth-frequency
+sustentacular-cell-growth-frequency
+1
+1000
+30.0
+1
+1
+NIL
+HORIZONTAL
+
+SLIDER
+610
+485
+782
+518
+EB-life-timer
+EB-life-timer
+1
+1000
+5.0
+1
+1
+NIL
+HORIZONTAL
+
+SLIDER
+285
+405
+557
+438
+initial-number-microglia-olfactory-cortex
+initial-number-microglia-olfactory-cortex
+0
+40
+15.0
+1
+1
+NIL
+HORIZONTAL
+
+TEXTBOX
+20
+135
+170
+153
+USER COMFORT
+11
+15.0
+1
+
+TEXTBOX
+285
+135
+435
+153
+CELL NUMBER VARIABLES
+11
+15.0
+1
+
+TEXTBOX
+615
+135
+760
+161
+ADDITIONAL VARIABLES
+11
+15.0
+1
+
+SLIDER
+285
+445
+532
+478
+initial-number-hippocampus-neurons
+initial-number-hippocampus-neurons
+0
+50
+30.0
+1
+1
+NIL
+HORIZONTAL
+
+SLIDER
+285
+485
+542
+518
+initial-number-microglias-hippocampus
+initial-number-microglias-hippocampus
+0
+40
+15.0
+1
+1
+NIL
+HORIZONTAL
+
+PLOT
+1365
+390
+1800
+715
+Plaque and Tangle Formation (Hippocampus)
+Ticks (100 ticks = 1 day)
+# of patches
+0.0
+10.0
+0.0
+10.0
+true
+true
+"" ""
+PENS
+"Plaque" 1.0 0 -16777216 true "" "plot count patches with [pcolor = 9]"
+"Tangles" 1.0 0 -2674135 true "" "plot count tangles-hippocampus"
+
+MONITOR
+1580
+725
+1787
+770
+Total Plaque Formed (Hippocampus)
+count patches with [pcolor = 9]
+17
+1
+11
+
+MONITOR
+1075
+780
+1312
+825
+Total Tangles Formed (Olfactory Cortex)
+count tangles-olfactory-cortex
+17
+1
+11
+
+MONITOR
+1580
+780
+1797
+825
+Total Tangles Formed (Hippocampus)
+count tangles-hippocampus
+17
+1
+11
+
+@#$#@#$#@
+## WHAT IS IT?
+
+A 3D representation of a potential pathway for Chlamydia pneumoniae to enter the brain and activate an immune response which develops amyloid plaques that contribute to Alzheimer's Disease.
+
+
+## HOW TO USE IT
+
+Specify system conditions by choosing values for each variable and rate represented by switches and sliders on the user interface. Recommended values, based off scientific literature, are provided as a reference  Next, click "setup" and then "Go". Observe the system's behavior and adjust variables as desired (updated immediately within the running code). 
+
+## THINGS TO NOTICE
+
+The number of white patches (AB plaque patches) that develop over time. The number of orange x's (neurofibrillary tangles) that develop over time. The steady state behavior of the system. 
+
+## THINGS TO TRY
+
+Varying all parameters, that's what they're there for!
+
+## EXTENDING THE MODEL
+
+Improving the movement of C. pneumoniae elementary bodies in the nasal cavity. More accurately depicting the axon/glomerulus/dendrite system and coding a potential mechanism for infection through it.  Including the infection of sustentacular cells. Coding basal cells and Bowman's glands. Reducing the complexity/increasing the efficiency of the code while maintaining all its features. The list goes on and on... 
+
+## CREDITS AND REFERENCES
+
+Model created by Carly Battistoni, Ryan McNulty, Shalini Sundar, Fernando Morales
+Special thanks to Prasad Dhurjati and Jon Gorky for their advisement on the project
+@#$#@#$#@
+default
+true
+0
+Polygon -7500403 true true 150 5 40 250 150 205 260 250
+
+airplane
+true
+0
+Polygon -7500403 true true 150 0 135 15 120 60 120 105 15 165 15 195 120 180 135 240 105 270 120 285 150 270 180 285 210 270 165 240 180 180 285 195 285 165 180 105 180 60 165 15
+
+arrow
+true
+0
+Polygon -7500403 true true 150 0 0 150 105 150 105 293 195 293 195 150 300 150
+
+box
+false
+0
+Polygon -7500403 true true 150 285 285 225 285 75 150 135
+Polygon -7500403 true true 150 135 15 75 150 15 285 75
+Polygon -7500403 true true 15 75 15 225 150 285 150 135
+Line -16777216 false 150 285 150 135
+Line -16777216 false 150 135 15 75
+Line -16777216 false 150 135 285 75
+
+bug
+true
+0
+Circle -7500403 true true 96 182 108
+Circle -7500403 true true 110 127 80
+Circle -7500403 true true 110 75 80
+Line -7500403 true 150 100 80 30
+Line -7500403 true 150 100 220 30
+
+butterfly
+true
+0
+Polygon -7500403 true true 150 165 209 199 225 225 225 255 195 270 165 255 150 240
+Polygon -7500403 true true 150 165 89 198 75 225 75 255 105 270 135 255 150 240
+Polygon -7500403 true true 139 148 100 105 55 90 25 90 10 105 10 135 25 180 40 195 85 194 139 163
+Polygon -7500403 true true 162 150 200 105 245 90 275 90 290 105 290 135 275 180 260 195 215 195 162 165
+Polygon -16777216 true false 150 255 135 225 120 150 135 120 150 105 165 120 180 150 165 225
+Circle -16777216 true false 135 90 30
+Line -16777216 false 150 105 195 60
+Line -16777216 false 150 105 105 60
+
+car
+false
+0
+Polygon -7500403 true true 300 180 279 164 261 144 240 135 226 132 213 106 203 84 185 63 159 50 135 50 75 60 0 150 0 165 0 225 300 225 300 180
+Circle -16777216 true false 180 180 90
+Circle -16777216 true false 30 180 90
+Polygon -16777216 true false 162 80 132 78 134 135 209 135 194 105 189 96 180 89
+Circle -7500403 true true 47 195 58
+Circle -7500403 true true 195 195 58
+
+circle
+false
+0
+Circle -7500403 true true 0 0 300
+
+circle 2
+false
+0
+Circle -7500403 true true 0 0 300
+Circle -16777216 true false 30 30 240
+
+cow
+false
+0
+Polygon -7500403 true true 200 193 197 249 179 249 177 196 166 187 140 189 93 191 78 179 72 211 49 209 48 181 37 149 25 120 25 89 45 72 103 84 179 75 198 76 252 64 272 81 293 103 285 121 255 121 242 118 224 167
+Polygon -7500403 true true 73 210 86 251 62 249 48 208
+Polygon -7500403 true true 25 114 16 195 9 204 23 213 25 200 39 123
+
+cylinder
+false
+0
+Circle -7500403 true true 0 0 300
+
+dot
+false
+0
+Circle -7500403 true true 90 90 120
+
+face happy
+false
+0
+Circle -7500403 true true 8 8 285
+Circle -16777216 true false 60 75 60
+Circle -16777216 true false 180 75 60
+Polygon -16777216 true false 150 255 90 239 62 213 47 191 67 179 90 203 109 218 150 225 192 218 210 203 227 181 251 194 236 217 212 240
+
+face neutral
+false
+0
+Circle -7500403 true true 8 7 285
+Circle -16777216 true false 60 75 60
+Circle -16777216 true false 180 75 60
+Rectangle -16777216 true false 60 195 240 225
+
+face sad
+false
+0
+Circle -7500403 true true 8 8 285
+Circle -16777216 true false 60 75 60
+Circle -16777216 true false 180 75 60
+Polygon -16777216 true false 150 168 90 184 62 210 47 232 67 244 90 220 109 205 150 198 192 205 210 220 227 242 251 229 236 206 212 183
+
+fish
+false
+0
+Polygon -1 true false 44 131 21 87 15 86 0 120 15 150 0 180 13 214 20 212 45 166
+Polygon -1 true false 135 195 119 235 95 218 76 210 46 204 60 165
+Polygon -1 true false 75 45 83 77 71 103 86 114 166 78 135 60
+Polygon -7500403 true true 30 136 151 77 226 81 280 119 292 146 292 160 287 170 270 195 195 210 151 212 30 166
+Circle -16777216 true false 215 106 30
+
+flag
+false
+0
+Rectangle -7500403 true true 60 15 75 300
+Polygon -7500403 true true 90 150 270 90 90 30
+Line -7500403 true 75 135 90 135
+Line -7500403 true 75 45 90 45
+
+flower
+false
+0
+Polygon -10899396 true false 135 120 165 165 180 210 180 240 150 300 165 300 195 240 195 195 165 135
+Circle -7500403 true true 85 132 38
+Circle -7500403 true true 130 147 38
+Circle -7500403 true true 192 85 38
+Circle -7500403 true true 85 40 38
+Circle -7500403 true true 177 40 38
+Circle -7500403 true true 177 132 38
+Circle -7500403 true true 70 85 38
+Circle -7500403 true true 130 25 38
+Circle -7500403 true true 96 51 108
+Circle -16777216 true false 113 68 74
+Polygon -10899396 true false 189 233 219 188 249 173 279 188 234 218
+Polygon -10899396 true false 180 255 150 210 105 210 75 240 135 240
+
+house
+false
+0
+Rectangle -7500403 true true 45 120 255 285
+Rectangle -16777216 true false 120 210 180 285
+Polygon -7500403 true true 15 120 150 15 285 120
+Line -16777216 false 30 120 270 120
+
+leaf
+false
+0
+Polygon -7500403 true true 150 210 135 195 120 210 60 210 30 195 60 180 60 165 15 135 30 120 15 105 40 104 45 90 60 90 90 105 105 120 120 120 105 60 120 60 135 30 150 15 165 30 180 60 195 60 180 120 195 120 210 105 240 90 255 90 263 104 285 105 270 120 285 135 240 165 240 180 270 195 240 210 180 210 165 195
+Polygon -7500403 true true 135 195 135 240 120 255 105 255 105 285 135 285 165 240 165 195
+
+line
+true
+0
+Line -7500403 true 150 0 150 300
+
+line half
+true
+0
+Line -7500403 true 150 0 150 150
+
+pentagon
+false
+0
+Polygon -7500403 true true 150 15 15 120 60 285 240 285 285 120
+
+person
+false
+0
+Circle -7500403 true true 110 5 80
+Polygon -7500403 true true 105 90 120 195 90 285 105 300 135 300 150 225 165 300 195 300 210 285 180 195 195 90
+Rectangle -7500403 true true 127 79 172 94
+Polygon -7500403 true true 195 90 240 150 225 180 165 105
+Polygon -7500403 true true 105 90 60 150 75 180 135 105
+
+plant
+false
+0
+Rectangle -7500403 true true 135 90 165 300
+Polygon -7500403 true true 135 255 90 210 45 195 75 255 135 285
+Polygon -7500403 true true 165 255 210 210 255 195 225 255 165 285
+Polygon -7500403 true true 135 180 90 135 45 120 75 180 135 210
+Polygon -7500403 true true 165 180 165 210 225 180 255 120 210 135
+Polygon -7500403 true true 135 105 90 60 45 45 75 105 135 135
+Polygon -7500403 true true 165 105 165 135 225 105 255 45 210 60
+Polygon -7500403 true true 135 90 120 45 150 15 180 45 165 90
+
+sheep
+false
+15
+Circle -1 true true 203 65 88
+Circle -1 true true 70 65 162
+Circle -1 true true 150 105 120
+Polygon -7500403 true false 218 120 240 165 255 165 278 120
+Circle -7500403 true false 214 72 67
+Rectangle -1 true true 164 223 179 298
+Polygon -1 true true 45 285 30 285 30 240 15 195 45 210
+Circle -1 true true 3 83 150
+Rectangle -1 true true 65 221 80 296
+Polygon -1 true true 195 285 210 285 210 240 240 210 195 210
+Polygon -7500403 true false 276 85 285 105 302 99 294 83
+Polygon -7500403 true false 219 85 210 105 193 99 201 83
+
+square
+false
+0
+Rectangle -7500403 true true 30 30 270 270
+
+square 2
+false
+0
+Rectangle -7500403 true true 30 30 270 270
+Rectangle -16777216 true false 60 60 240 240
+
+star
+false
+0
+Polygon -7500403 true true 151 1 185 108 298 108 207 175 242 282 151 216 59 282 94 175 3 108 116 108
+
+target
+false
+0
+Circle -7500403 true true 0 0 300
+Circle -16777216 true false 30 30 240
+Circle -7500403 true true 60 60 180
+Circle -16777216 true false 90 90 120
+Circle -7500403 true true 120 120 60
+
+tree
+false
+0
+Circle -7500403 true true 118 3 94
+Rectangle -6459832 true false 120 195 180 300
+Circle -7500403 true true 65 21 108
+Circle -7500403 true true 116 41 127
+Circle -7500403 true true 45 90 120
+Circle -7500403 true true 104 74 152
+
+triangle
+false
+0
+Polygon -7500403 true true 150 30 15 255 285 255
+
+triangle 2
+false
+0
+Polygon -7500403 true true 150 30 15 255 285 255
+Polygon -16777216 true false 151 99 225 223 75 224
+
+truck
+false
+0
+Rectangle -7500403 true true 4 45 195 187
+Polygon -7500403 true true 296 193 296 150 259 134 244 104 208 104 207 194
+Rectangle -1 true false 195 60 195 105
+Polygon -16777216 true false 238 112 252 141 219 141 218 112
+Circle -16777216 true false 234 174 42
+Rectangle -7500403 true true 181 185 214 194
+Circle -16777216 true false 144 174 42
+Circle -16777216 true false 24 174 42
+Circle -7500403 false true 24 174 42
+Circle -7500403 false true 144 174 42
+Circle -7500403 false true 234 174 42
+
+turtle
+true
+0
+Polygon -10899396 true false 215 204 240 233 246 254 228 266 215 252 193 210
+Polygon -10899396 true false 195 90 225 75 245 75 260 89 269 108 261 124 240 105 225 105 210 105
+Polygon -10899396 true false 105 90 75 75 55 75 40 89 31 108 39 124 60 105 75 105 90 105
+Polygon -10899396 true false 132 85 134 64 107 51 108 17 150 2 192 18 192 52 169 65 172 87
+Polygon -10899396 true false 85 204 60 233 54 254 72 266 85 252 107 210
+Polygon -7500403 true true 119 75 179 75 209 101 224 135 220 225 175 261 128 261 81 224 74 135 88 99
+
+wheel
+false
+0
+Circle -7500403 true true 3 3 294
+Circle -16777216 true false 30 30 240
+Line -7500403 true 150 285 150 15
+Line -7500403 true 15 150 285 150
+Circle -7500403 true true 120 120 60
+Line -7500403 true 216 40 79 269
+Line -7500403 true 40 84 269 221
+Line -7500403 true 40 216 269 79
+Line -7500403 true 84 40 221 269
+
+wolf
+false
+0
+Polygon -16777216 true false 253 133 245 131 245 133
+Polygon -7500403 true true 2 194 13 197 30 191 38 193 38 205 20 226 20 257 27 265 38 266 40 260 31 253 31 230 60 206 68 198 75 209 66 228 65 243 82 261 84 268 100 267 103 261 77 239 79 231 100 207 98 196 119 201 143 202 160 195 166 210 172 213 173 238 167 251 160 248 154 265 169 264 178 247 186 240 198 260 200 271 217 271 219 262 207 258 195 230 192 198 210 184 227 164 242 144 259 145 284 151 277 141 293 140 299 134 297 127 273 119 270 105
+Polygon -7500403 true true -1 195 14 180 36 166 40 153 53 140 82 131 134 133 159 126 188 115 227 108 236 102 238 98 268 86 269 92 281 87 269 103 269 113
+
+x
+false
+0
+Polygon -7500403 true true 270 75 225 30 30 225 75 270
+Polygon -7500403 true true 30 75 75 30 270 225 225 270
+@#$#@#$#@
+NetLogo 3D 6.1.0
+@#$#@#$#@
+need-to-manually-make-preview-for-this-model
+@#$#@#$#@
+@#$#@#$#@
+@#$#@#$#@
+@#$#@#$#@
+default
+0.0
+-0.2 0 0.0 1.0
+0.0 1 1.0 0.0
+0.2 0 0.0 1.0
+link direction
+true
+0
+Line -7500403 true 150 150 90 180
+Line -7500403 true 150 150 210 180
+@#$#@#$#@
+1
+@#$#@#$#@
